@@ -98,16 +98,15 @@ class ArchitectAgent:
         # gpt‑4o (or any o‑series) natively supports multimodal inputs.
         self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
         # Bind the tool to the LLM instance
-        # Ensure the tool name matches what the LLM might call (often the class name or a specific identifier)
-        # WriteFileTool's default name is 'write_file'. Let's bind it explicitly.
-        self.llm_with_tools = self.llm.bind_tools([write_code_tool], tool_choice="write_file")
+        self.llm_with_tools = self.llm.bind_tools([write_code_tool])
 
 
     # ------------------------------------------------------------------
     def __call__(self, folder: Union[str, Path]) -> str:  # noqa: D401
         """
         Analyze images in *folder*. If the LLM decides to write code,
-        it invokes the write_code_tool. Otherwise, returns the plan.
+        it invokes the write_code_tool for each requested file.
+        Returns a summary of file operations or the plan if no files were written.
         """
         image_blocks = _gather_image_blocks(folder)
 
@@ -124,9 +123,11 @@ class ArchitectAgent:
         # Invoke the LLM with the bound tools
         response = self.llm_with_tools.invoke(messages)
 
-        # Check if the response contains a tool call
+        # Check if the response contains tool calls
+        # This loop already handles multiple tool calls correctly.
         tool_calls = response.tool_calls
         if tool_calls:
+            results = []
             for tool_call in tool_calls:
                  # Ensure the tool call is for our intended tool
                 if tool_call.get("name") == write_code_tool.name:
@@ -140,7 +141,8 @@ class ArchitectAgent:
                         code_content = args.get("text")
 
                         if not relative_file_path or code_content is None: # Allow empty string for content
-                             return f"Error: Missing 'file_path' or 'text' in tool arguments: {args}"
+                             results.append(f"Error: Skipped tool call due to missing 'file_path' or 'text': {args}")
+                             continue # Skip to the next tool call
 
                         # Construct the full path relative to the project root
                         full_file_path = PROJECT_ROOT_PATH / relative_file_path
@@ -150,15 +152,16 @@ class ArchitectAgent:
 
                         # Execute the tool
                         tool_result = write_code_tool.run({"file_path": str(full_file_path), "text": code_content})
-                        return f"Code written successfully to {relative_file_path}. Tool Result: {tool_result}"
+                        results.append(f"Code written successfully to {relative_file_path}. Tool Result: {tool_result}")
 
                     except Exception as e:
-                        return f"Error executing write_code_tool: {e}. Args: {tool_call.get('args')}"
+                        results.append(f"Error executing write_code_tool for args {tool_call.get('args')}: {e}")
                 else:
                     # Handle other potential tool calls if necessary
-                    return f"Unsupported tool call detected: {tool_call.get('name')}"
-            # Should not be reached if tool_calls is not empty and loop finishes
-            return "Tool call detected but not processed."
+                    results.append(f"Skipped unsupported tool call: {tool_call.get('name')}")
+
+            # Return a summary of all operations
+            return "\n".join(results) if results else "Tool calls received but none were processed."
         else:
             # If no tool call, return the content directly (the plan)
             return response.content if response.content else "No content generated."
