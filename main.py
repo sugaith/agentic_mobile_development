@@ -1,14 +1,39 @@
 import sys
 from pathlib import Path
+import os # Import os for cleanup if needed
+from dotenv import load_dotenv
 
-# Add project root to the Python path to allow absolute imports from anywhere
+# Load environment variables from .env file FIRST
+load_dotenv()
+
+# Add project root to the Python path AFTER loading env vars if needed,
+# though imports below might handle this depending on structure.
+# Consider if this sys.path modification is still necessary here or if
+# relative imports within the modules are sufficient.
 project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Now import modules that might depend on environment variables
 from agent_module.architect_agent import ArchitectAgent
 from agent_module.agent_tools.agent_tools import write_code_tool
-import os # Import os for cleanup if needed
+
+# Ensure required environment variables are set (optional but good practice)
+required_vars = [
+    "LANGCHAIN_TRACING_V2",
+    "LANGCHAIN_ENDPOINT",
+    "LANGCHAIN_API_KEY",
+    "LANGCHAIN_PROJECT",
+    "OPENAI_API_KEY",
+    "REACT_NATIVE_PROJECT_ROOT_FOLDER",
+]
+for var in required_vars:
+    if var not in os.environ:
+        raise EnvironmentError(
+            f"Required environment variable '{var}' not found. "
+            "Ensure it is set in your .env file or environment."
+        )
+
 
 def run_architect_agent_example():
     """Runs the example usage of the ArchitectAgent."""
@@ -59,4 +84,4 @@ def test_write_code_tool():
 if __name__ == "__main__":
     print(f"Running script from project root: {project_root}")
     run_architect_agent_example()
-    test_write_code_tool()
+    # test_write_code_tool()
