@@ -41,7 +41,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from langchain.tools import tool  # LangChain tool wrapper
-from system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
+# Use absolute import from project root
+from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
 # Import the tool using an absolute path from the project root perspective
 from agent_module.agent_tools.agent_tools import write_code_tool
 
@@ -134,30 +135,3 @@ def generate_ui_plan(*, folder: str) -> str:  # type: ignore[valid-type]
     """Generate a React Native UI implementation plan from annotated images in *folder*."""
     agent = ArchitectAgent()
     return agent(folder)
-
-
-# -----------------------------------------------------------------------------
-# Optional CLI for quick tests
-# -----------------------------------------------------------------------------
-if __name__ == "__main__":
-    # Example usage of the InputAgent/generate_ui_plan tool
-    agent = ArchitectAgent()
-    plan_text = agent(Path("zbase_rn_project/ui_images"))
-    print("--- Generated Plan ---")
-    print(plan_text)
-    print("----------------------")
-
-    # Example usage of the write_code_tool for testing
-    print("\n--- Testing write_code_tool ---")
-    try:
-        test_file_path = "test_output.txt"
-        test_content = "This is a test content written by write_code_tool."
-        # The tool expects keyword arguments 'file_path' and 'text'
-        write_code_tool.run(tool_input={"file_path": test_file_path, "text": test_content})
-        print(f"Successfully wrote to {test_file_path}")
-        # Clean up the test file
-        # os.remove(test_file_path)
-        # print(f"Cleaned up {test_file_path}")
-    except Exception as e:
-        print(f"Error testing write_code_tool: {e}")
-    print("-----------------------------")

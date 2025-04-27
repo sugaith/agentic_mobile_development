@@ -1,1 +1,1 @@
-This is a test content written by write_code_tool.
+This is a test content written by write_code_tool from main.py.
