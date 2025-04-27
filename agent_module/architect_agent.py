@@ -29,13 +29,21 @@ import os
 import mimetypes
 from pathlib import Path
 from typing import List, Union
+import sys # Add sys import
+
+# Add project root to the Python path to allow absolute imports
+project_root = Path(__file__).resolve().parents[1] # Go up two levels (agent_module -> agentic_mobile_development)
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from langchain.tools import tool  # LangChain tool wrapper
-from system_description.agent_job_descriptions import INPUT_AGENT_JOB_DESCRIPTION, INPUT_AGENT_DUTY
-
+from system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
+# Import the tool using an absolute path from the project root perspective
+from agent_module.agent_tools.agent_tools import write_code_tool
 
 
 # Load environment variables from .env file
@@ -56,7 +64,7 @@ for var in required_vars:
             "Ensure it is set in your .env file or environment."
         )
 
-__all__ = ["InputAgent", "generate_ui_plan"]
+__all__ = ["ArchitectAgent", "generate_ui_plan"]
 
 # -----------------------------------------------------------------------------
 # Helpers – image handling
@@ -92,7 +100,7 @@ def _gather_image_blocks(folder: Union[str, Path]) -> List[dict]:
 # -----------------------------------------------------------------------------
 # Core agent class
 # -----------------------------------------------------------------------------
-class InputAgent:
+class ArchitectAgent:
     """Analyze images in *folder* and return the implementation plan as a string."""
 
     def __init__(self, *, model_name: str = "gpt-4o", temperature: float = 0.0):
@@ -105,12 +113,12 @@ class InputAgent:
         image_blocks = _gather_image_blocks(folder)
 
         user_content = [
-            {"type": "text", "text": INPUT_AGENT_DUTY},
+            {"type": "text", "text": ARCHITECT_AGENT_DUTY},
             *image_blocks,
         ]
 
         messages = [
-            SystemMessage(content=INPUT_AGENT_JOB_DESCRIPTION),
+            SystemMessage(content=ARCHITECT_AGENT_JOB_DESCRIPTION),
             HumanMessage(content=user_content),
         ]
 
@@ -124,7 +132,7 @@ class InputAgent:
 @tool("generate_ui_plan", return_direct=True)
 def generate_ui_plan(*, folder: str) -> str:  # type: ignore[valid-type]
     """Generate a React Native UI implementation plan from annotated images in *folder*."""
-    agent = InputAgent()
+    agent = ArchitectAgent()
     return agent(folder)
 
 
@@ -132,7 +140,24 @@ def generate_ui_plan(*, folder: str) -> str:  # type: ignore[valid-type]
 # Optional CLI for quick tests
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    agent = InputAgent()
+    # Example usage of the InputAgent/generate_ui_plan tool
+    agent = ArchitectAgent()
     plan_text = agent(Path("zbase_rn_project/ui_images"))
-
+    print("--- Generated Plan ---")
     print(plan_text)
+    print("----------------------")
+
+    # Example usage of the write_code_tool for testing
+    print("\n--- Testing write_code_tool ---")
+    try:
+        test_file_path = "test_output.txt"
+        test_content = "This is a test content written by write_code_tool."
+        # The tool expects keyword arguments 'file_path' and 'text'
+        write_code_tool.run(tool_input={"file_path": test_file_path, "text": test_content})
+        print(f"Successfully wrote to {test_file_path}")
+        # Clean up the test file
+        # os.remove(test_file_path)
+        # print(f"Cleaned up {test_file_path}")
+    except Exception as e:
+        print(f"Error testing write_code_tool: {e}")
+    print("-----------------------------")
