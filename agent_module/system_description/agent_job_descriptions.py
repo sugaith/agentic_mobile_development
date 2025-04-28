@@ -73,7 +73,7 @@ ARCHITECT_AGENT_DUTY = """
     5. Provide implementation of all screens files, App.tsx with NavigationContainer and RootNavigator, respecting the folder structure defined by you.
     6. The implemented code should be a working code.
 
-"""
 
-# Example usage:
-# print(INPUT_AGENT_JOB_DESCRIPTION)
+    Create
+
+"""
