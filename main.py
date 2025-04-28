@@ -60,27 +60,6 @@ def run_architect_agent_example():
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-def test_write_code_tool():
-    """Tests the write_code_tool functionality."""
-    print("\n--- Testing write_code_tool ---")
-    try:
-        # Define the test file path relative to the project root
-        test_file_path = project_root / "test_output.txt"
-        test_content = "This is a test content written by write_code_tool from main.py."
-        # The tool expects keyword arguments 'file_path' and 'text'
-        # Note: WriteFileTool expects file_path as a string
-        write_code_tool.run(tool_input={"file_path": str(test_file_path), "text": test_content})
-        print(f"Successfully wrote to {test_file_path}")
-        # Optional: Clean up the test file
-        # try:
-        #     os.remove(test_file_path)
-        #     print(f"Cleaned up {test_file_path}")
-        # except OSError as e:
-        #     print(f"Error cleaning up test file: {e}")
-    except Exception as e:
-        print(f"Error testing write_code_tool: {e}")
-    print("-----------------------------")
-
 if __name__ == "__main__":
     print(f"Running script from project root: {project_root}")
     run_architect_agent_example()

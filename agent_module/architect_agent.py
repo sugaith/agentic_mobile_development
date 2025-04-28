@@ -87,7 +87,7 @@ def _gather_image_blocks(folder: Union[str, Path]) -> List[dict]:
 class ArchitectAgent:
     """Analyze images in *folder* and return the implementation plan as a string."""
 
-    def __init__(self, *, model_name: str = "gpt-4o", temperature: float = 0.0):
+    def __init__(self, *, model_name: str = "o4-mini", temperature: float = 1.0):
         # gpt‑4o (or any o‑series) natively supports multimodal inputs.
         self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
         # Bind the tools to the LLM instance

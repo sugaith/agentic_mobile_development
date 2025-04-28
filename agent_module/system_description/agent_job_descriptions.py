@@ -45,13 +45,28 @@ You will decide and implement the navigation structure (using React Navigation) 
 * This plan will be used by other agent to iterate on your code.
 
 **IMPORTANT TIPS:**
-- when using `write_file` tool, the root folder of the project is the `REACT_NATIVE_PROJECT_ROOT_FOLDER` environment variable.
+1. when using `write_file` tool, the root folder of the project is the `REACT_NATIVE_PROJECT_ROOT_FOLDER` environment variable.
   - this folder is the root of an Expo Project. You will find the `App.tsx` file there in `src/App.tsx`.
+2. run the `terminal` tool to list the existing file structure (with `ls`, don't use -R), to check file content (with `cat`), or whatever other command you need.
 
 """
 
 ARCHITECT_AGENT_DUTY = """
-    Analyze the following annotated UI images and return a structured implementation plan in `TODO.md` for others to follow.
+    1. Analyze the following annotated UI images and return a structured implementation plan in `TODO.md` for others to follow.
+      In this plan, be detailed about the screens implementations, providing code snippets.
 
-    Create the boilerplate for all screens you see. The important thing is that the navigation between them must be working.
+    2. Create the boilerplate for all screens just the way you defined in step 1. 
+    
+    3. Write what you've done in the file called `next-steps.md` with the following content:
+
+    ```markdown
+    # Report 1: Project Architecture - make by Architect-Agent
+
+    ## Actions taken
+    - <here, describe what you've done in the project>
+
+    ## Next Steps
+    - <here, describe what the next steps are for the developer agent>
+
+    ```
 """
