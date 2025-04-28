@@ -41,7 +41,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain.tools import tool
 from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
-from agent_module.agent_tools import write_code_tool, powershell_tool
+from agent_module.agent_tools import write_file, read_file, list_src_folder
 
 __all__ = ["ArchitectAgent", "generate_ui_plan"]
 
@@ -87,11 +87,15 @@ def _gather_image_blocks(folder: Union[str, Path]) -> List[dict]:
 class ArchitectAgent:
     """Analyze images in *folder* and return the implementation plan as a string."""
 
-    def __init__(self, *, model_name: str = "o4-mini", temperature: float = 1.0):
+    def __init__(self, *, model_name: str = "gpt-4o", temperature: float = 0.0):
         # gpt‑4o (or any o‑series) natively supports multimodal inputs.
         self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
         # Bind the tools to the LLM instance
-        self.llm_with_tools = self.llm.bind_tools([write_code_tool, powershell_tool])
+        self.llm_with_tools = self.llm.bind_tools([
+            write_file,
+            read_file,
+            list_src_folder
+        ])
 
     def __call__(self, folder: Union[str, Path]) -> str:  # noqa: D401
         """
@@ -123,7 +127,7 @@ class ArchitectAgent:
                 if isinstance(args, str):
                     args = json.loads(args)
 
-                if tool_name == write_code_tool.name:
+                if tool_name == write_file.name:
                     try:
                         relative_file_path = args.get("file_path")
                         code_content = args.get("text")
@@ -134,24 +138,18 @@ class ArchitectAgent:
 
                         full_file_path = PROJECT_ROOT_PATH / relative_file_path
                         full_file_path.parent.mkdir(parents=True, exist_ok=True)
-                        tool_result = write_code_tool.run({"file_path": str(full_file_path), "text": code_content})
+                        tool_result = write_file.run({"file_path": str(full_file_path), "text": code_content})
                         results.append(f"Code written successfully to {relative_file_path}. Tool Result: {tool_result}")
 
                     except Exception as e:
-                        results.append(f"Error executing write_code_tool: {e}")
+                        results.append(f"Error executing write_file: {e}")
 
-                elif tool_name == powershell_tool.name:
+                elif tool_name == "list_src_folder":
                     try:
-                        command = args.get("command")
-                        if not command:
-                            results.append(f"Error: Skipped PowerShell command due to missing 'command': {args}")
-                            continue
-
-                        tool_result = powershell_tool.run(command)
-                        results.append(f"PowerShell command executed successfully. Result: {tool_result}")
-
+                        tool_result = list_src_folder.run("")  # Pass empty string as tool_input
+                        results.append(f"list_src_folder executed successfully. Result: {tool_result}")
                     except Exception as e:
-                        results.append(f"Error executing PowerShell command: {e}")
+                        results.append(f"Error executing list_src_folder: {e}")
 
                 else:
                     results.append(f"Skipped unsupported tool call: {tool_name}")

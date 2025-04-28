@@ -16,7 +16,7 @@ if str(project_root) not in sys.path:
 
 # Now import modules that might depend on environment variables
 from agent_module.architect_agent import ArchitectAgent
-from agent_module.agent_tools.agent_tools import write_code_tool
+from agent_module.agent_tools.agent_tools import write_file
 
 # Ensure required environment variables are set (optional but good practice)
 required_vars = [
@@ -63,4 +63,3 @@ def run_architect_agent_example():
 if __name__ == "__main__":
     print(f"Running script from project root: {project_root}")
     run_architect_agent_example()
-    # test_write_code_tool()
