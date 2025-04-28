@@ -25,6 +25,7 @@ required_vars = [
     "LANGCHAIN_API_KEY",
     "LANGCHAIN_PROJECT",
     "OPENAI_API_KEY",
+    "GOOGLE_API_KEY",
     "REACT_NATIVE_PROJECT_ROOT_FOLDER",
 ]
 for var in required_vars:

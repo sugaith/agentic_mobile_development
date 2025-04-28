@@ -38,6 +38,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain.tools import tool
 from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
@@ -87,9 +88,10 @@ def _gather_image_blocks(folder: Union[str, Path]) -> List[dict]:
 class ArchitectAgent:
     """Analyze images in *folder* and return the implementation plan as a string."""
 
-    def __init__(self, *, model_name: str = "gpt-4o", temperature: float = 0.0):
+    def __init__(self, *, model_name: str = "gemini-2.5-pro-exp-03-25", temperature: float = 0.3):
         # gpt‑4o (or any o‑series) natively supports multimodal inputs.
-        self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
+        # self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
+        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
         # Bind the tools to the LLM instance
         self.llm_with_tools = self.llm.bind_tools([
             write_file,
