@@ -41,17 +41,17 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver # For potential state persistence
 
 from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION
-from agent_module.agent_tools import write_file, read_file, list_src_folder, read_memory, append_memory
+from agent_module.agent_tools import write_file, read_file, list_src_folder
 
 __all__ = ["ArchitectAgent", "generate_ui_plan"]
 
 # Get the project root from environment variable
-REACT_NATIVE_PROJECT_ROOT_FOLDER = os.getenv("REACT_NATIVE_PROJECT_ROOT_FOLDER")
-if not REACT_NATIVE_PROJECT_ROOT_FOLDER:
-    raise ValueError("Environment variable REACT_NATIVE_PROJECT_ROOT_FOLDER is not set.")
-PROJECT_ROOT_PATH = Path(REACT_NATIVE_PROJECT_ROOT_FOLDER)
-if not PROJECT_ROOT_PATH.is_dir():
-     raise FileNotFoundError(f"REACT_NATIVE_PROJECT_ROOT_FOLDER path does not exist or is not a directory: {PROJECT_ROOT_PATH}")
+REACT_NATIVE_SOURCE_FOLDER = os.getenv("REACT_NATIVE_SOURCE_FOLDER")
+if not REACT_NATIVE_SOURCE_FOLDER:
+    raise ValueError("Environment variable REACT_NATIVE_SOURCE_FOLDER is not set.")
+PROJECT_SRC_PATH = Path(REACT_NATIVE_SOURCE_FOLDER)
+if not PROJECT_SRC_PATH.is_dir():
+     raise FileNotFoundError(f"REACT_NATIVE_SOURCE_FOLDER path does not exist or is not a directory: {PROJECT_SRC_PATH}")
 
 # -----------------------------------------------------------------------------
 # Helpers – image handling
@@ -154,7 +154,7 @@ def execute_tools(state: ArchitectAgentState):
                         if os.path.isabs(relative_file_path):
                             full_file_path = Path(relative_file_path)
                         else:
-                            full_file_path = PROJECT_ROOT_PATH / relative_file_path
+                            full_file_path = PROJECT_SRC_PATH / relative_file_path
                         try:
                             full_file_path.parent.mkdir(parents=True, exist_ok=True)
                             print(f"Attempting to write to: {full_file_path}")
@@ -173,7 +173,7 @@ def execute_tools(state: ArchitectAgentState):
                         if os.path.isabs(file_path_to_read):
                             full_read_path = Path(file_path_to_read)
                         else:
-                            full_read_path = PROJECT_ROOT_PATH / file_path_to_read
+                            full_read_path = PROJECT_SRC_PATH / file_path_to_read
                         print(f"Attempting to read from: {full_read_path}")
                         if full_read_path.is_file():
                             tool_result = tool_to_run.run({"file_path": str(full_read_path)})
@@ -206,9 +206,10 @@ def should_continue(state: ArchitectAgentState) -> Literal["execute_tools", "end
     if last_message.tool_calls:
         print("Condition: Tool calls detected, routing to execute_tools.")
         return "execute_tools"
-    # Otherwise, check for completion signal
+    # Otherwise, check for completion signal in the AI message content
+    # Use isinstance to ensure it's an AIMessage before checking content
     if isinstance(last_message, AIMessage) and "TASK COMPLETE" in last_message.content:
-        print("Condition: TASK COMPLETE detected, routing to end.")
+        print("Condition: TASK COMPLETE detected in AI message, routing to end.")
         return "end_loop"
     # Otherwise, route back to the agent node
     print("Condition: No tool calls, TASK COMPLETE not found. Routing back to agent.")
@@ -263,7 +264,7 @@ class ArchitectAgent:
     def __init__(self, *, model_name: str = "gemini-2.5-pro-preview-03-25", temperature: float = 0.3):
         global llm_with_tools # Use global for simplicity in this refactor
         self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature, convert_system_message_to_human=True) # Ensure system message compatibility if needed
-        self.tools = [write_file, read_file, list_src_folder, read_memory, append_memory] # Add memory tools
+        self.tools = [write_file, read_file, list_src_folder] # Add memory tools
         llm_with_tools = self.llm.bind_tools(self.tools, tool_choice="any")
         self.graph = app # The compiled LangGraph application
         # Store the job description as a SystemMessage
