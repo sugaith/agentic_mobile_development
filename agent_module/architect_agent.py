@@ -32,7 +32,7 @@ from typing import List, Union, Dict, Any
 import sys
 import json
 import time # Import time for potential delays or retries if needed
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage # Import SystemMessage
 import operator
 from typing import TypedDict, Annotated, List, Union, Literal # Import Literal
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -40,8 +40,8 @@ from langchain.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver # For potential state persistence
 
-from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION, ARCHITECT_AGENT_DUTY
-from agent_module.agent_tools import write_file, read_file, list_src_folder
+from agent_module.system_description.agent_job_descriptions import ARCHITECT_AGENT_JOB_DESCRIPTION
+from agent_module.agent_tools import write_file, read_file, list_src_folder, read_memory, append_memory
 
 __all__ = ["ArchitectAgent", "generate_ui_plan"]
 
@@ -262,55 +262,79 @@ class ArchitectAgent:
 
     def __init__(self, *, model_name: str = "gemini-2.5-pro-preview-03-25", temperature: float = 0.3):
         global llm_with_tools # Use global for simplicity in this refactor
-        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature)
-        self.tools = [write_file, read_file, list_src_folder]
+        self.llm = ChatGoogleGenerativeAI(model=model_name, temperature=temperature, convert_system_message_to_human=True) # Ensure system message compatibility if needed
+        self.tools = [write_file, read_file, list_src_folder, read_memory, append_memory] # Add memory tools
         llm_with_tools = self.llm.bind_tools(self.tools, tool_choice="any")
         self.graph = app # The compiled LangGraph application
+        # Store the job description as a SystemMessage
+        self.system_message = SystemMessage(content=ARCHITECT_AGENT_JOB_DESCRIPTION)
 
-    def __call__(self, folder: Union[str, Path]) -> str:
-        """Runs the LangGraph-based analysis."""
-        print(f"Starting Architect Agent analysis for folder: {folder}")
-        image_blocks = _gather_image_blocks(folder)
+    def __call__(self, user_input: Union[str, List[Dict[str, Any]]], iteration: int) -> str:
+        """
+        Invokes the agent graph for a single iteration.
 
-        initial_prompt_text = f"{ARCHITECT_AGENT_JOB_DESCRIPTION}\n\n{ARCHITECT_AGENT_DUTY}"
-        user_content = [{"type": "text", "text": initial_prompt_text}, *image_blocks]
+        Args:
+            user_input: For iteration 1, a list containing text instructions and image blocks.
+                        For subsequent iterations, a string containing the instructions from the previous AI response.
+            iteration: The current iteration number (starting from 1).
 
-        initial_state = {"messages": [HumanMessage(content=user_content)]}
+        Returns:
+            The content of the final AI message for this iteration.
+        """
+        print(f"--- Starting Architect Agent Iteration {iteration} ---")
+
+        # Construct the HumanMessage based on the iteration
+        if iteration == 1 and isinstance(user_input, list):
+            # First iteration: Expecting list with text and image blocks
+            human_content = [
+                {"type": "text", "text": f"Iteration {iteration}: Start the process based on the provided images and initial instructions."},
+                *user_input # Spread the list which contains text and image dicts
+            ]
+            print("Input type: Initial instructions + Images")
+        elif iteration > 1 and isinstance(user_input, str):
+            # Subsequent iterations: Expecting string instructions from previous step
+            human_content = f"Iteration {iteration}: Continue based on the following instructions:\n{user_input}"
+            print("Input type: Instructions from previous iteration")
+        else:
+            raise ValueError(f"Invalid user_input type for iteration {iteration}: {type(user_input)}")
+
+        human_message = HumanMessage(content=human_content)
+
+        # Initial state includes the SystemMessage and the constructed HumanMessage
+        initial_state = {"messages": [self.system_message, human_message]}
 
         # Define config for potential persistence or recursion limits
-        # config = {"recursion_limit": 50, "configurable": {"thread_id": "user_123"}} # Example config
-        config = {"recursion_limit": 6} # Simple recursion limit
+        # Increased recursion limit to allow more agent steps per iteration if needed
+        config = {}
 
         final_state = None
-        final_summary = "Architect agent started (LangGraph)..."
+        final_ai_response = "Error: Agent execution did not produce a final state."
         try:
-            # Stream events for detailed logging (optional)
-            # for event in self.graph.stream(initial_state, config=config):
-            #     print(event)
-            #     print("---")
-            # final_state = event
-
-            # Or invoke directly for the final state
+            # Invoke the graph for this iteration
             final_state = self.graph.invoke(initial_state, config=config)
 
-            print("--- Architect Agent (LangGraph) Execution Complete ---")
-            # Extract final messages or summary
+            print(f"--- Architect Agent Iteration {iteration} Complete ---")
+            # Extract the content of the last AI message
             if final_state and "messages" in final_state:
-                final_summary += "\nFinal Messages:\n" + "\n".join([str(m) for m in final_state["messages"]])
+                last_message = final_state["messages"][-1]
+                if isinstance(last_message, AIMessage):
+                    final_ai_response = last_message.content
+                    print(f"Final AI Response for Iteration {iteration}: {final_ai_response[:200]}...") # Log snippet
+                else:
+                    final_ai_response = f"Error: Last message was not an AIMessage: {type(last_message)}"
+                    print(final_ai_response)
+                    # Optionally log the full last message for debugging
+                    # print(f"Full last message: {last_message}")
+
             else:
-                final_summary += "\nExecution finished, but final state is unexpected."
+                final_ai_response = "Error: Execution finished, but final state is unexpected or missing messages."
+                print(final_ai_response)
+
 
         except Exception as e:
-            print(f"Error during LangGraph execution: {e}")
-            final_summary += f"\nError during LangGraph execution: {e}"
+            print(f"Error during LangGraph execution in Iteration {iteration}: {e}")
+            final_ai_response = f"Error during LangGraph execution: {e}"
 
-        return final_summary
+        return final_ai_response
 
-# -----------------------------------------------------------------------------
-# LangChain Tool wrapper
-# -----------------------------------------------------------------------------
-@tool("generate_ui_plan", return_direct=True)
-def generate_ui_plan(*, folder: str) -> str:  # type: ignore[valid-type]
-    """Generate a React Native UI implementation plan from annotated images in *folder* using LangGraph."""
-    agent = ArchitectAgent()
-    return agent(folder)
+__all__ = ["ArchitectAgent"] # Update __all__ if the tool is removed/changed

@@ -33,6 +33,13 @@ class ListSrcFolderTool(BaseTool):
         # Synchronous only
         raise NotImplementedError("list_src_folder does not support async")
 
+# Reuse write_file for appending to MEMORY.MD
+append_memory = WriteFileTool()
+
+# Reuse read_file for reading MEMORY.MD
+read_memory = ReadFileTool()
+
 list_src_folder = ListSrcFolderTool()
 
 __all__ = ["write_file", "read_file", "powershell_tool", "list_src_folder"]
+__all__.extend(["read_memory", "append_memory"]);
