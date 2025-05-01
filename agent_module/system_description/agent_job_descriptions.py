@@ -29,6 +29,6 @@ You should focus on buttons, navigation and text. If you find images in the layo
 **Tips:**
 - Find your memory using `read_file` tool using the path `./MEMORY.md`
 - In the src folder there's a basic Expo App template with react-navigation set in `App.tsx`. Modify it as you see fit.
-- Find/write Screens folder: in `./screens`
+- Find/write Screens at folder `./navigation/screens`
 - Find/write `App.tsx` in `./App.tsx`
 """
